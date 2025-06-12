@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         a.op = (op == 'R') ? R_OP : W_OP;
         a.pid = getpid();
         safe_write(fd, &a, sizeof a);
-        sleep(1);  /* 1 UT (1 segundo) */
+        sleep(1);
     }
     fclose(f);
     return 0;

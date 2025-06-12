@@ -5,9 +5,7 @@
 #include "utils.h"
 #include "pager.h"
 
-/* --------------------------------------------------------------------- */
-static int ask_rounds(void)
-{
+static int ask_rounds(void) {
     int r;
     printf("Número de rodadas (mín.1): ");
     while (scanf("%d", &r)!=1 || r<1) {
@@ -17,26 +15,23 @@ static int ask_rounds(void)
     return r;
 }
 
-static PagerType ask_algorithm(void)
-{
+static PagerType ask_algorithm(void) {
     char s[8];
-    printf("Algoritmo [NRU|2ND|LRU|WS3|WS5]: ");
+    printf("Algoritmo [NRU|2ND|LRU|WS]: ");
     while (scanf("%7s", s)==1) {
         for (int i=0;s[i];i++) s[i]=toupper((unsigned char)s[i]);
         if (!strcmp(s,"NRU"))  return PAGER_NRU;
         if (!strcmp(s,"2ND"))  return PAGER_2ND;
         if (!strcmp(s,"LRU"))  return PAGER_LRU;
-        if (!strcmp(s,"WS3"))  return PAGER_WS3;
-        if (!strcmp(s,"WS5"))  return PAGER_WS5;
+        if (!strcmp(s,"WS"))  return PAGER_WS;
         printf("Opção inválida – tente novamente: ");
     }
     return PAGER_NRU;
 }
 
-int main(void)
-{
+int main(void) {
     PagerType pager = ask_algorithm();
-    int rounds      = ask_rounds();
+    int rounds = ask_rounds();
 
     init_gmv(pager, rounds);
     run_gmv();
