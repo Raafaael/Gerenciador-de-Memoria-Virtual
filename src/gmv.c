@@ -22,7 +22,7 @@ int pid2idx(int pid) {
     for (int i = 0; i < N_PROCS; i++) {
         if (child_pid[i] == pid) return i;
     }
-    return 0;
+    return -1;
 }
 
 void aging_tick(void) {
@@ -96,6 +96,8 @@ int find_victim(int pid) {
 }
 
 void handle_access(const Access *a) {
+    int idx = pid2idx(pid);
+    if (idx == -1) die("pid desconhecido: %d", pid);
     PTE *pte = &page_table[pid2idx(a->pid)][a->page_idx];
     pte->referenced = 1;
     if (a->op == W_OP) pte->modified = 1;
