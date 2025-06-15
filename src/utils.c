@@ -7,27 +7,27 @@
 #include <errno.h>
 #include <time.h>
 
-ssize_t safe_read(int fd, void *buf, size_t count) {
+int safe_read(int fd, void *buf, size_t count) {
     size_t off = 0;
     while (off < count) {
-        ssize_t n = read(fd, (char*)buf + off, count - off);
+        int n = read(fd, (char*)buf + off, count - off);
         if (n == 0) die("EOF inesperado em pipe");
         if (n < 0 && errno == EINTR) continue;
         if (n < 0) die("read(): %s", strerror(errno));
         off += (size_t)n;
     }
-    return (ssize_t)off;
+    return (int)off;
 }
 
-ssize_t safe_write(int fd, const void *buf, size_t count) {
+int safe_write(int fd, const void *buf, size_t count) {
     size_t off = 0;
     while (off < count) {
-        ssize_t n = write(fd, (char*)buf + off, count - off);
+        int n = write(fd, (char*)buf + off, count - off);
         if (n < 0 && errno == EINTR) continue;
         if (n < 0) die("write(): %s", strerror(errno));
         off += (size_t)n;
     }
-    return (ssize_t)off;
+    return (int)off;
 }
 
 void *xmalloc(size_t n) {

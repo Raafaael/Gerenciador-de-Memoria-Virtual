@@ -5,14 +5,14 @@
 #include <fcntl.h>
 #include <sys/select.h>
 #include "gmv.h"
-#include "pager.h"
+#include "algorithms.h"
 #include "utils.h"
 
-PTE    page_table[N_PROCS][VPAGES];
-Frame  frames[N_FRAMES];
-Stats  stats = {0};
-int    extra_slots[N_PROCS] = {0};
-int    total_rounds;
+PTE page_table[N_PROCS][VPAGES];
+Frame frames[N_FRAMES];
+Stats stats = {0};
+int extra_slots[N_PROCS] = {0};
+int total_rounds;
 PagerType current_pager;
 
 int pfd[N_PROCS][2];
@@ -43,33 +43,37 @@ const char* op_str(AccessType op) {
 }
 
 void load_page(int frame, int pid, int vpage) {
+    // Proteção extra: nunca aceitar índices inválidos de frame
+    if (frame < 0 || frame >= N_FRAMES) {
+        die("BUG: Algoritmo retornou quadro inválido (%d)", frame);
+    }
+
     PTE *vict = frames[frame].pte_ptr;
 
     if (vict && vict->present) {
-        printf("Quadro %d: Substituindo P%d pág %d", frame, pid2idx(frames[frame].owner_pid)+1, frames[frame].vpage);
+        int px = pid2idx(frames[frame].owner_pid) + 1;
+        int py = pid2idx(pid) + 1;
+        printf("PF: P%d gerou PAGE FAULT e substituiu quadro %d (antes: P%d pág %d)",
+               py, frame, px, frames[frame].vpage);
         if (vict->modified)
-            printf(" (SUJA, será gravada no disco)");
+            printf(" [SUJA, gravada no disco]");
         printf("\n");
     }
 
-    // LIMPEZA COMPLETA DA ENTRADA VÍTIMA
     if (vict) {
-        if (vict->modified) {
-            stats.dirty_writes++;
-        }
+        if (vict->modified) stats.dirty_writes++;
         vict->present = 0;
+        vict->frame = -1;
         vict->modified = 0;
         vict->referenced = 0;
-        vict->frame = -1;
         vict->age = 0;
-        // last_ref pode ser mantido para estatísticas
     }
 
     PTE *newpte = &page_table[pid2idx(pid)][vpage];
     newpte->present = 1;
+    newpte->frame = frame;
     newpte->modified = 0;
     newpte->referenced = 1;
-    newpte->frame = frame;
     newpte->age = 0;
     newpte->last_ref = stats.page_faults;
 
@@ -79,6 +83,7 @@ void load_page(int frame, int pid, int vpage) {
 
     printf("Quadro %d agora contém P%d pág %d\n", frame, pid2idx(pid)+1, vpage);
 }
+
 
 int find_victim(int pid) {
     switch (current_pager) {
@@ -191,7 +196,7 @@ void dump_page_tables(void) {
     puts("\n========= Tabelas de Página =========");
     for (int p = 0; p < N_PROCS; p++) {
         printf("Processo P%d\n", p + 1);
-        puts("VPg | P M R | Quadro | Age | LastRef");
+        puts("VP | P M R | Frame | Age | LastRef");
         puts("------------------------------------------");
         for (int v = 0; v < VPAGES; v++) {
             PTE *t = &page_table[p][v];

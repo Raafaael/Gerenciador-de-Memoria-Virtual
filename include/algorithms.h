@@ -1,5 +1,5 @@
-#ifndef PAGER_H
-#define PAGER_H
+#ifndef ALGORITHMS_H
+#define ALGORITHMS_H
 
 typedef enum { PAGER_NRU, PAGER_2ND, PAGER_LRU, PAGER_WS } PagerType;
 

@@ -1,6 +1,6 @@
 #ifndef GMV_H
 #define GMV_H
-#include "pager.h"
+#include "algorithms.h"
 
 // Parâmetros fixos
 #define N_PROCS 4
