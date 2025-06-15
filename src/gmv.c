@@ -157,7 +157,7 @@ void init_gmv(PagerType pager, int rounds) {
         if ((child_pid[i] = fork()) < 0) die("fork");
         if (child_pid[i] == 0) {
             close(pfd[i][0]);
-            sprintf(file_name, "acessos_P%d", i + 1);
+            sprintf(file_name, "acessos_P%d.txt", i + 1);
             char fdstr[8]; sprintf(fdstr, "%d", pfd[i][1]);
             execl("./processos", "processos", fdstr, file_name, NULL);
             die("exec processos");

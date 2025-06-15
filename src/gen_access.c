@@ -23,7 +23,7 @@ int main(void) {
     srand(time(NULL));
     for (int i = 1; i <= 4; i++) {
         char filename[20];
-        snprintf(filename, sizeof(filename), "acessos_P%d", i);
+        snprintf(filename, sizeof(filename), "acessos_P%d.txt", i);
         generate_access_file(filename, i);
     }
     printf("Arquivos de acesso gerados com sucesso.\n");
