@@ -50,11 +50,12 @@ int find_victim_lru(void) {
     return best;
 }
 
-// Working Set (WS3 ou WS5, depende do enum)
+extern int ws_k; // Variável global para o parâmetro do WS
+// Working Set
 int find_victim_ws(void) {
     int pid = frames[0].owner_pid;
     unsigned cur = stats.page_faults;
-    int k = 3; // ou 5, se quiser WS5
+    int k = ws_k; // ou 5, se quiser WS5
     for (int f = 0; f < N_FRAMES; ++f) {
         if (frames[f].owner_pid == pid) {
             PTE *p = frames[f].pte_ptr;
