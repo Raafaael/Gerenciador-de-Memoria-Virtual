@@ -84,20 +84,19 @@ void load_page(int frame, int pid, int vpage) {
     printf("Quadro %d agora contém P%d pág %d\n", frame, pid2idx(pid)+1, vpage);
 }
 
-
 int find_victim(int pid) {
     switch (current_pager) {
         case PAGER_NRU: return find_victim_nru();
         case PAGER_2ND: return find_victim_2nd();
         case PAGER_LRU: return find_victim_lru();
-        case PAGER_WS: return find_victim_ws();
+        case PAGER_WS: return find_victim_ws(pid);
         default: return 0;
     }
 }
 
 void handle_access(const Access *a) {
-    int idx = pid2idx(pid);
-    if (idx == -1) die("pid desconhecido: %d", pid);
+    int idx = pid2idx(a->pid);
+    if (idx == -1) die("pid desconhecido: %d", a->pid);
     PTE *pte = &page_table[pid2idx(a->pid)][a->page_idx];
     pte->referenced = 1;
     if (a->op == W_OP) pte->modified = 1;

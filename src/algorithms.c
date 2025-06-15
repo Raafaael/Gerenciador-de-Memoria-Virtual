@@ -52,17 +52,14 @@ int find_victim_lru(void) {
 
 extern int ws_k; // Variável global para o parâmetro do WS
 // Working Set
-int find_victim_ws(void) {
-    int pid = frames[0].owner_pid;
+int find_victim_ws(int pid) {
     unsigned cur = stats.page_faults;
-    int k = ws_k; // ou 5, se quiser WS5
     for (int f = 0; f < N_FRAMES; ++f) {
         if (frames[f].owner_pid == pid) {
             PTE *p = frames[f].pte_ptr;
-            if (p && (cur - p->last_ref > k))
+            if (p && (cur - p->last_ref > ws_k))
                 return f;
         }
     }
     return find_victim_nru();
 }
-
