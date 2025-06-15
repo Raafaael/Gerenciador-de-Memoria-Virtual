@@ -96,8 +96,8 @@ int find_victim(int pid) {
 }
 
 void handle_access(const Access *a) {
-    int idx = pid2idx(pid);
-    if (idx == -1) die("pid desconhecido: %d", pid);
+    int idx = pid2idx(a->pid);
+    if (idx == -1) die("pid desconhecido: %d", a->pid);
     PTE *pte = &page_table[pid2idx(a->pid)][a->page_idx];
     pte->referenced = 1;
     if (a->op == W_OP) pte->modified = 1;
