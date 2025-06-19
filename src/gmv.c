@@ -4,9 +4,9 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <sys/select.h>
+#include <stdlib.h>
 #include "gmv.h"
 #include "algorithms.h"
-#include "utils.h"
 
 PTE page_table[N_PROCS][VPAGES];
 Frame frames[N_FRAMES];
@@ -37,31 +37,31 @@ void aging_tick(void) {
     }
 }
 
-// Print helper para operação
 const char* op_str(AccessType op) {
     return (op == W_OP ? "W" : "R");
 }
 
 void load_page(int frame, int pid, int vpage) {
-    // Proteção extra: nunca aceitar índices inválidos de frame
     if (frame < 0 || frame >= N_FRAMES) {
-        die("BUG: Algoritmo retornou quadro inválido (%d)", frame);
+        fprintf(stderr,"BUG: Algoritmo retornou quadro inválido (%d)\n", frame);
+        exit(1);
     }
 
     PTE *vict = frames[frame].pte_ptr;
 
+    // 1. Limpe a vítima e contabilize ANTES de sobrescrever o frame
     if (vict && vict->present) {
+        printf("DEBUG: Antes de remover, modified=%d, frame=%d, vpage=%d\n", vict->modified, frame, frames[frame].vpage);
         int px = pid2idx(frames[frame].owner_pid) + 1;
         int py = pid2idx(pid) + 1;
         printf("PF: P%d gerou PAGE FAULT e substituiu quadro %d (antes: P%d pág %d)",
                py, frame, px, frames[frame].vpage);
-        if (vict->modified)
+        if (vict->modified) {
             printf(" [SUJA, gravada no disco]");
+            stats.dirty_writes++;
+        }
         printf("\n");
-    }
 
-    if (vict) {
-        if (vict->modified) stats.dirty_writes++;
         vict->present = 0;
         vict->frame = -1;
         vict->modified = 0;
@@ -69,6 +69,7 @@ void load_page(int frame, int pid, int vpage) {
         vict->age = 0;
     }
 
+    // 2. Só depois, atualize o frame para o novo PTE
     PTE *newpte = &page_table[pid2idx(pid)][vpage];
     newpte->present = 1;
     newpte->frame = frame;
@@ -88,7 +89,7 @@ int find_victim(int pid) {
     switch (current_pager) {
         case PAGER_NRU: return find_victim_nru();
         case PAGER_2ND: return find_victim_2nd();
-        case PAGER_LRU: return find_victim_lru();
+        case PAGER_LRU: return find_victim_lru(pid);
         case PAGER_WS: return find_victim_ws(pid);
         default: return 0;
     }
@@ -96,13 +97,18 @@ int find_victim(int pid) {
 
 void handle_access(const Access *a) {
     int idx = pid2idx(a->pid);
-    if (idx == -1) die("pid desconhecido: %d", a->pid);
-    PTE *pte = &page_table[pid2idx(a->pid)][a->page_idx];
+    if (idx == -1) {
+        fprintf(stderr,"pid desconhecido: %d\n", a->pid);
+        exit(1);
+    }
+    PTE *pte = &page_table[idx][a->page_idx];
     pte->referenced = 1;
-    if (a->op == W_OP) pte->modified = 1;
+    if (a->op == W_OP) {
+        pte->modified = 1;
+    }
 
     // Print do acesso
-    printf("Processo %d: acesso %s na página %d\n", pid2idx(a->pid)+1, op_str(a->op), a->page_idx);
+    printf("Processo %d: acesso %s na página %d\n", idx+1, op_str(a->op), a->page_idx);
 
     if (pte->present == 0) {
         stats.page_faults++;
@@ -117,7 +123,7 @@ void handle_access(const Access *a) {
 
         printf("  >> PAGE FAULT! (total PFs: %d)\n", stats.page_faults);
         load_page(frame, a->pid, a->page_idx);
-        extra_slots[pid2idx(a->pid)] = 2;
+        extra_slots[idx] = 2;
     }
     pte->last_ref = stats.page_faults;
     aging_tick();
@@ -153,14 +159,36 @@ void init_gmv(PagerType pager, int rounds) {
 
     char file_name[32];
     for (int i = 0; i < N_PROCS; i++) {
-        if (pipe(pfd[i]) < 0) die("pipe");
-        if ((child_pid[i] = fork()) < 0) die("fork");
+        if (pipe(pfd[i]) < 0) {
+            fprintf(stderr,"pipe error\n");
+            exit(1);
+        }
+        if ((child_pid[i] = fork()) < 0) {
+            fprintf(stderr,"fork error\n");
+            exit(1);
+        }
         if (child_pid[i] == 0) {
             close(pfd[i][0]);
-            sprintf(file_name, "acessos_P%d", i + 1);
-            char fdstr[8]; sprintf(fdstr, "%d", pfd[i][1]);
-            execl("./processos", "processos", fdstr, file_name, NULL);
-            die("exec processos");
+            sprintf(file_name, "acessos_P%d.txt", i + 1);
+
+            FILE *f = fopen(file_name, "r");
+            if (!f) {
+                fprintf(stderr,"falha abrindo %s\n", file_name);
+                exit(1);
+            }
+
+            char line[32];
+            while (fgets(line, sizeof line, f)) {
+                Access a;
+                char op;
+                sscanf(line, "%d %c", &a.page_idx, &op);
+                a.op = (op == 'R') ? R_OP : W_OP;
+                a.pid = getpid();
+                write(pfd[i][1], &a, sizeof a);
+                sleep(1);
+            }
+            fclose(f);
+            exit(0);
         }
         close(pfd[i][1]);
         fcntl(pfd[i][0], F_SETFL, O_NONBLOCK);

@@ -1,6 +1,7 @@
+#include <stdio.h>
+#include <limits.h>
 #include "algorithms.h"
 #include "gmv.h"
-#include "utils.h"
 
 // NRU: Not Recently Used
 int find_victim_nru(void) {
@@ -9,13 +10,14 @@ int find_victim_nru(void) {
         PTE *p = frames[f].pte_ptr;
         if (!p) continue;
         int cls = (!p->referenced << 1) | p->modified;
+        printf("NRU: frame %d, class %d, mod %d, ref %d\n", f, cls, p->modified, p->referenced);
         if (cls < best_class) {
             best_class = cls;
             best = f;
         }
         if (best_class == 0) break;
     }
-    if (best == -1) die("Erro NRU: Nenhum quadro elegível para substituição!");
+    if (best == -1) fprintf(stderr,"Erro NRU: Nenhum quadro elegível para substituição!");
     return best;
 }
 
@@ -31,23 +33,25 @@ int find_victim_2nd(void) {
         hand = (hand + 1) % N_FRAMES;
         tentativas++;
     }
-    die("Erro 2ND: Nenhum quadro elegível para substituição!");
+    fprintf(stderr,"Erro 2ND: Nenhum quadro elegível para substituição!");
     return -1; // nunca chega aqui
 }
 
 // LRU: Least Recently Used (usando Aging)
-int find_victim_lru(void) {
-    int best = -1;
-    unsigned max_age = 0;
+int find_victim_lru(int pid) {
+    int oldest = -1;
+    unsigned int oldest_age = UINT_MAX;
     for (int f = 0; f < N_FRAMES; ++f) {
         PTE *p = frames[f].pte_ptr;
-        if (p && p->age > max_age) {
-            max_age = p->age;
-            best = f;
+        if (!p || !p->present) continue;
+        if (frames[f].owner_pid != pid) continue;
+        if (p->age < oldest_age) {
+            oldest_age = p->age;
+            oldest = f;
         }
     }
-    if (best == -1) die("Erro LRU: Nenhum quadro elegível para substituição!");
-    return best;
+    if (oldest == -1) fprintf(stderr,"Erro LRU: Nenhum quadro elegível para substituição para pid %d!", pid);
+    return oldest;
 }
 
 extern int ws_k; // Variável global para o parâmetro do WS

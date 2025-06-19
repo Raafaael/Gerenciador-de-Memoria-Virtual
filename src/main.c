@@ -2,7 +2,6 @@
 #include <ctype.h>
 #include <string.h>
 #include "gmv.h"
-#include "utils.h"
 #include "algorithms.h"
 
 int ws_k = 0; // global para o parâmetro do WS
