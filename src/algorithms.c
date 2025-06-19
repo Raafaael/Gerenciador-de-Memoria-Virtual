@@ -1,3 +1,4 @@
+#include <limits.h>
 #include "algorithms.h"
 #include "gmv.h"
 #include "utils.h"
@@ -36,18 +37,20 @@ int find_victim_2nd(void) {
 }
 
 // LRU: Least Recently Used (usando Aging)
-int find_victim_lru(void) {
-    int best = -1;
-    unsigned max_age = 0;
+int find_victim_lru(int pid) {
+    int oldest = -1;
+    unsigned int oldest_age = UINT_MAX;
     for (int f = 0; f < N_FRAMES; ++f) {
         PTE *p = frames[f].pte_ptr;
-        if (p && p->age > max_age) {
-            max_age = p->age;
-            best = f;
+        if (!p || !p->present) continue;
+        if (frames[f].owner_pid != pid) continue;
+        if (p->age < oldest_age) {
+            oldest_age = p->age;
+            oldest = f;
         }
     }
-    if (best == -1) die("Erro LRU: Nenhum quadro elegível para substituição!");
-    return best;
+    if (oldest == -1) die("Erro LRU: Nenhum quadro elegível para substituição para pid %d!", pid);
+    return oldest;
 }
 
 extern int ws_k; // Variável global para o parâmetro do WS

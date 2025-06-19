@@ -88,7 +88,7 @@ int find_victim(int pid) {
     switch (current_pager) {
         case PAGER_NRU: return find_victim_nru();
         case PAGER_2ND: return find_victim_2nd();
-        case PAGER_LRU: return find_victim_lru();
+        case PAGER_LRU: return find_victim_lru(pid);
         case PAGER_WS: return find_victim_ws(pid);
         default: return 0;
     }
