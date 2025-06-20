@@ -89,13 +89,28 @@ int find_victim_lru(int pid) {
 extern int ws_k; // Variável global para o parâmetro do WS
 // Working Set
 int find_victim_ws(int pid) {
-    unsigned long long cur = tick; 
+    unsigned long long cur = tick;
+    int victim = -1;
+    unsigned long long oldest_ref = ULLONG_MAX;
+
     for (int f = 0; f < N_FRAMES; ++f) {
-        if (frames[f].owner_pid == pid) {
-            PTE *p = frames[f].pte_ptr;
-            if (p && (cur - p->last_ref > ws_k))
-                return f;
+        if (frames[f].owner_pid != pid) continue;
+        PTE *p = frames[f].pte_ptr;
+        if (!p || !p->present) continue;
+        if (cur - p->last_ref > ws_k) {
+            printf("WS: Escolhendo quadro %d (fora do conjunto, last_ref=%u)\n", f, p->last_ref);
+            return f;
+        }
+        if (p->last_ref < oldest_ref) {
+            oldest_ref = p->last_ref;
+            victim = f;
         }
     }
-    return find_victim_nru();
+
+    if (victim == -1) {
+        fprintf(stderr, "Erro WS: Nenhum quadro elegível para pid %d!\n", pid);
+        exit(1);
+    }
+    printf("WS: Escolhendo quadro %d (menor last_ref=%llu)\n", victim, oldest_ref);
+    return victim;
 }
