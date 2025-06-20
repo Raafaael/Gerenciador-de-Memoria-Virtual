@@ -11,9 +11,13 @@
 PTE page_table[N_PROCS][VPAGES];
 Frame frames[N_FRAMES];
 Stats stats = {0};
-int extra_slots[N_PROCS] = {0};
+int pf_delay[N_PROCS] = {0}; 
 int total_rounds;
 PagerType current_pager;
+static int acessos_por_proc = 150;
+static int acessos_lidos[N_PROCS] = {0};
+static int total_lidos = 0;
+unsigned long long tick = 0;
 
 int pfd[N_PROCS][2];
 int child_pid[N_PROCS];
@@ -75,8 +79,8 @@ void load_page(int frame, int pid, int vpage) {
     newpte->frame = frame;
     newpte->modified = 0;
     newpte->referenced = 1;
-    newpte->age = 0;
-    newpte->last_ref = stats.page_faults;
+    newpte->age = 0x80;
+    newpte->last_ref = tick;
 
     frames[frame].owner_pid = pid;
     frames[frame].vpage = vpage;
@@ -96,6 +100,7 @@ int find_victim(int pid) {
 }
 
 void handle_access(const Access *a) {
+    tick++; 
     int idx = pid2idx(a->pid);
     if (idx == -1) {
         fprintf(stderr,"pid desconhecido: %d\n", a->pid);
@@ -123,9 +128,9 @@ void handle_access(const Access *a) {
 
         printf("  >> PAGE FAULT! (total PFs: %d)\n", stats.page_faults);
         load_page(frame, a->pid, a->page_idx);
-        extra_slots[idx] = 2;
+        pf_delay[idx] = 2;
     }
-    pte->last_ref = stats.page_faults;
+    pte->last_ref = tick;
     aging_tick();
 }
 
@@ -196,21 +201,58 @@ void init_gmv(PagerType pager, int rounds) {
     }
 }
 
-void run_gmv(void) {
-    int accesses = 0;
-    for (int rodada = 0; accesses < total_rounds * N_PROCS; rodada++) {
-        printf("\n==== INÍCIO DA RODADA %d ====\n", rodada+1);
-        for (int i = 0; i < N_PROCS && accesses < total_rounds * N_PROCS; i++) {
-            printf("--> Executando processo P%d\n", i+1);
+void run_gmv(void)
+{
+    int total_acessos = acessos_por_proc * N_PROCS;
+    int rodada = 0;
+
+    while (total_lidos < total_acessos && /* ainda há linhas */
+           rodada < total_rounds) /* não passou rodadas */
+    {
+        printf("\n==== INÍCIO DA RODADA %d ====\n", ++rodada);
+
+        /* -------- Round-Robin: P1..P4 -------- */
+        for (int i = 0; i < N_PROCS && total_lidos < total_acessos; ++i) {
+
+            if (acessos_lidos[i] >= acessos_por_proc)
+                continue; /* filho P i já terminou      */
+
+            printf("--> Executando processo P%d\n", i + 1);
             kill(child_pid[i], SIGCONT);
-            int slots = 1 + extra_slots[i];
-            extra_slots[i] = 0;
-            for (int s = 0; s < slots; s++) {
-                poll_pipes_once();
+
+            /* ---------- quantum “normal” de 1 s ---------- */
+            if (acessos_lidos[i] < acessos_por_proc) {
+                fd_set set;
+                FD_ZERO(&set);
+                FD_SET(pfd[i][0], &set);
+                struct timeval tv = {0, 200000};   /* 0,2 s timeout */
+
+                if (select(pfd[i][0] + 1, &set, NULL, NULL, &tv) > 0) {
+                    Access a;
+                    if (read(pfd[i][0], &a, sizeof a) == sizeof a) {
+                        handle_access(&a);
+                        acessos_lidos[i]++;
+                        total_lidos++;
+                    }
+                }
                 sleep(1);
             }
+
+            /* ---------- atraso extra por page-fault ---------- */
+            if (pf_delay[i] > 0) {
+                printf("(delay de %d s para I/O de page-fault)\n", pf_delay[i]);
+                sleep(pf_delay[i]);
+                pf_delay[i] = 0;  /* já “pagou” o disco */
+            }
+
             kill(child_pid[i], SIGSTOP);
-            accesses++;
+        }
+
+        /* zera o bit R entre rodadas se o pager for NRU */
+        if (current_pager == PAGER_NRU) {
+            for (int f = 0; f < N_FRAMES; ++f)
+                if (frames[f].pte_ptr)
+                    frames[f].pte_ptr->referenced = 0;
         }
     }
 }
@@ -225,12 +267,12 @@ void dump_page_tables(void) {
     puts("\n========= Tabelas de Página =========");
     for (int p = 0; p < N_PROCS; p++) {
         printf("Processo P%d\n", p + 1);
-        puts("VP | P M R | Frame | Age | LastRef");
+        puts("VP  | P M R | Frame | Age | LastRef");
         puts("------------------------------------------");
         for (int v = 0; v < VPAGES; v++) {
             PTE *t = &page_table[p][v];
             if (t->present == 0 && t->referenced == 0 && t->modified == 0) continue;
-            printf("%3d | %d %d %d | %6d | %3u | %7u\n",
+            printf("%3d | %d %d %d | %5d | %3u | %7u\n",
                    v, t->present, t->modified, t->referenced,
                    t->present ? t->frame : -1, t->age, t->last_ref);
         }

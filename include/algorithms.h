@@ -1,6 +1,8 @@
 #ifndef ALGORITHMS_H
 #define ALGORITHMS_H
 
+extern unsigned long long tick;
+
 typedef enum { PAGER_NRU, PAGER_2ND, PAGER_LRU, PAGER_WS } PagerType;
 
 int find_victim_nru(void);

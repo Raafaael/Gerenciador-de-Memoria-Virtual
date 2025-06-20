@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 #include "algorithms.h"
 #include "gmv.h"
@@ -14,50 +15,81 @@ int find_victim_nru(void) {
         if (cls < best_class) {
             best_class = cls;
             best = f;
+            if (best_class == 0){
+                 break;
+            }
         }
-        if (best_class == 0) break;
     }
-    if (best == -1) fprintf(stderr,"Erro NRU: Nenhum quadro elegível para substituição!");
+    if (best == -1) {
+        fprintf(stderr,"Erro NRU: Nenhum quadro elegível!\n");
+        exit(1);
+    }
     return best;
 }
 
 // Segunda Chance (Second Chance)
 static int hand = 0;
 int find_victim_2nd(void) {
-    int tentativas = 0;
-    while (tentativas < N_FRAMES * 2) { // Limita número de voltas
+    int voltas = 0;  /* quantos quadros já examinamos */
+
+    while (voltas < 2 * N_FRAMES) {   /* evita loop infinito improvável */
         PTE *p = frames[hand].pte_ptr;
-        if (p && !p->referenced)
-            return hand;
+
+        /* 1. Encontrou quadro válido e R=0 → é a vítima */
+        if (p && !p->referenced) {
+            int victim = hand;   /* guarda o índice escolhido */
+            hand = (hand + 1) % N_FRAMES;  /* AVANÇA para o próximo quadro */
+            return victim;
+        }
+
+        /* 2. Se houver página, zera R e dá a “segunda chance” */
         if (p) p->referenced = 0;
+
+        /* 3. Avança ponteiro para o próximo frame */
         hand = (hand + 1) % N_FRAMES;
-        tentativas++;
+        voltas++;
     }
-    fprintf(stderr,"Erro 2ND: Nenhum quadro elegível para substituição!");
-    return -1; // nunca chega aqui
+    fprintf(stderr, "Erro 2ND: Nenhum quadro elegível para substituição!\n");
+    exit(1);
 }
 
 // LRU: Least Recently Used (usando Aging)
 int find_victim_lru(int pid) {
-    int oldest = -1;
-    unsigned int oldest_age = UINT_MAX;
+    /* 1. Há quadro livre? Fica com ele. */
+    for (int f = 0; f < N_FRAMES; ++f)
+        if (frames[f].pte_ptr == NULL)
+            return f;
+
+    /* 2. Procura o quadro MAIS antigo (menor age) do próprio processo */
+    int victim = -1;
+    unsigned min_age = UINT_MAX;
+
     for (int f = 0; f < N_FRAMES; ++f) {
+        if (frames[f].owner_pid != pid) /* só páginas do mesmo proc. */
+            continue;
+
         PTE *p = frames[f].pte_ptr;
-        if (!p || !p->present) continue;
-        if (frames[f].owner_pid != pid) continue;
-        if (p->age < oldest_age) {
-            oldest_age = p->age;
-            oldest = f;
+        if (!p) continue;
+
+        printf("LRU-scan: frame %2d  vpage %2d  age=%3u (menor até agora=%3u)\n", f, frames[f].vpage, p->age, min_age);
+
+        if (p && p->age < min_age) { /* quanto menor, mais velho */
+            min_age = p->age;
+            victim  = f;
         }
     }
-    if (oldest == -1) fprintf(stderr,"Erro LRU: Nenhum quadro elegível para substituição para pid %d!", pid);
-    return oldest;
+    if (victim != -1)
+        return victim;
+
+    /* 3. NÃO deveria acontecer, mas... faz um fallback global para não travar */
+    fprintf(stderr, "LRU local: pid %d ficou sem molduras.", pid);
+    exit(1);
 }
 
 extern int ws_k; // Variável global para o parâmetro do WS
 // Working Set
 int find_victim_ws(int pid) {
-    unsigned cur = stats.page_faults;
+    unsigned long long cur = tick; 
     for (int f = 0; f < N_FRAMES; ++f) {
         if (frames[f].owner_pid == pid) {
             PTE *p = frames[f].pte_ptr;
