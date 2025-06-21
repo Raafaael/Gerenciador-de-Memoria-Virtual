@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include "gmv.h"
 #include "algorithms.h"
-#define NRU_RESET_TICKS 8
 
 PTE page_table[N_PROCS][VPAGES];
 Frame frames[N_FRAMES];
@@ -248,7 +247,7 @@ void run_gmv(void) {
         }
 
         /* zera o bit R entre rodadas se o pager for NRU */
-        if (current_pager == PAGER_NRU && (tick % NRU_RESET_TICKS) == 0){
+        if (current_pager == PAGER_NRU) {
             for (int f = 0; f < N_FRAMES; ++f)
                 if (frames[f].pte_ptr)
                     frames[f].pte_ptr->referenced = 0;
