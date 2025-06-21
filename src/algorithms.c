@@ -5,23 +5,26 @@
 #include "gmv.h"
 
 // NRU: Not Recently Used
+/* ---------- algorithms.c ---------- */
 int find_victim_nru(void) {
     int best = -1, best_class = 4;
     for (int f = 0; f < N_FRAMES; ++f) {
         PTE *p = frames[f].pte_ptr;
         if (!p) continue;
-        int cls = (!p->referenced << 1) | p->modified;
-        printf("NRU: frame %d, class %d, mod %d, ref %d\n", f, cls, p->modified, p->referenced);
+
+        /* classe 0 = (R=0, M=0); 1 = (0,1); 2 = (1,0); 3 = (1,1) */
+        int cls = (p->referenced ? 2 : 0) + (p->modified ? 1 : 0);
+
+        printf("NRU: frame %2d  class %d  M=%d R=%d\n", f, cls, p->modified, p->referenced);
+
         if (cls < best_class) {
             best_class = cls;
             best = f;
-            if (best_class == 0){
-                 break;
-            }
+            if (best_class == 0) break;   /* não há melhor que a classe-0 */
         }
     }
     if (best == -1) {
-        fprintf(stderr,"Erro NRU: Nenhum quadro elegível!\n");
+        fprintf(stderr, "Erro NRU: Nenhum quadro elegível!\n");
         exit(1);
     }
     return best;
@@ -82,7 +85,7 @@ int find_victim_lru(int pid) {
         return victim;
 
     /* 3. NÃO deveria acontecer, mas... faz um fallback global para não travar */
-    fprintf(stderr, "LRU local: pid %d ficou sem molduras.", pid);
+    fprintf(stderr, "LRU local: pid %d ficou sem molduras.\n", pid);
     exit(1);
 }
 
@@ -97,5 +100,6 @@ int find_victim_ws(int pid) {
                 return f;
         }
     }
-    return find_victim_nru();
+    fprintf(stderr, "Erro WS: Nenhum quadro elegível para substituição!\n");
+    exit(1);
 }

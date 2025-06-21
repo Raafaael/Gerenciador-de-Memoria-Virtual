@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "gmv.h"
 #include "algorithms.h"
+#define NRU_RESET_TICKS 8
 
 PTE page_table[N_PROCS][VPAGES];
 Frame frames[N_FRAMES];
@@ -79,7 +80,7 @@ void load_page(int frame, int pid, int vpage) {
     newpte->frame = frame;
     newpte->modified = 0;
     newpte->referenced = 1;
-    newpte->age = 0x80;
+    newpte->age = 0;
     newpte->last_ref = tick;
 
     frames[frame].owner_pid = pid;
@@ -201,14 +202,12 @@ void init_gmv(PagerType pager, int rounds) {
     }
 }
 
-void run_gmv(void)
-{
+void run_gmv(void) {
     int total_acessos = acessos_por_proc * N_PROCS;
     int rodada = 0;
 
     while (total_lidos < total_acessos && /* ainda há linhas */
-           rodada < total_rounds) /* não passou rodadas */
-    {
+           rodada < total_rounds) { /* não passou rodadas */ 
         printf("\n==== INÍCIO DA RODADA %d ====\n", ++rodada);
 
         /* -------- Round-Robin: P1..P4 -------- */
@@ -249,7 +248,7 @@ void run_gmv(void)
         }
 
         /* zera o bit R entre rodadas se o pager for NRU */
-        if (current_pager == PAGER_NRU) {
+        if (current_pager == PAGER_NRU && (tick % NRU_RESET_TICKS) == 0){
             for (int f = 0; f < N_FRAMES; ++f)
                 if (frames[f].pte_ptr)
                     frames[f].pte_ptr->referenced = 0;

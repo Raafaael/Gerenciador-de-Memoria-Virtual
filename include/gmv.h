@@ -36,7 +36,6 @@ typedef struct {
 extern PTE page_table[N_PROCS][VPAGES];
 extern Frame frames[N_FRAMES];
 extern Stats stats;
-extern int extra_slots[N_PROCS];
 extern int total_rounds;
 extern PagerType current_pager;
 
