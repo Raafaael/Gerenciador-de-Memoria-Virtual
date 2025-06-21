@@ -3,7 +3,7 @@
 
 extern unsigned long long tick;
 
-typedef enum { PAGER_NRU, PAGER_2ND, PAGER_LRU, PAGER_WS } PagerType;
+typedef enum {ALGORITHM_NRU, ALGORITHM_2ND, ALGORITHM_LRU, ALGORITHM_WS} Algorithm;
 
 int find_victim_nru(void);
 int find_victim_2nd(void);

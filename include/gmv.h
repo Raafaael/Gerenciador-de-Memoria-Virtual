@@ -10,7 +10,7 @@
 typedef enum { R_OP, W_OP } AccessType;
 
 typedef struct {
-    int page_idx;
+    int page_id;
     AccessType op;
     int pid;
 } Access;
@@ -20,12 +20,12 @@ typedef struct {
     unsigned frame;
     unsigned age;
     unsigned last_ref;
-} PTE;
+} TableEntry;
 
 typedef struct {
     int owner_pid;
     int vpage;
-    PTE *pte_ptr;
+    TableEntry *TableEntry_ptr;
 } Frame;
 
 typedef struct {
@@ -33,14 +33,14 @@ typedef struct {
     int dirty_writes;
 } Stats;
 
-extern PTE page_table[N_PROCS][VPAGES];
+extern TableEntry page_table[N_PROCS][VPAGES];
 extern Frame frames[N_FRAMES];
 extern Stats stats;
 extern int total_rounds;
-extern PagerType current_pager;
+extern Algorithm current_algorithm;
 
 // Interface
-void init_gmv(PagerType pager, int rounds);
+void init_gmv(Algorithm algorithm, int rounds);
 void run_gmv(void);
 void dump_stats(void);
 void dump_page_tables(void);

@@ -9,7 +9,7 @@
 int find_victim_nru(void) {
     int best = -1, best_class = 4;
     for (int f = 0; f < N_FRAMES; ++f) {
-        PTE *p = frames[f].pte_ptr;
+        TableEntry *p = frames[f].TableEntry_ptr;
         if (!p) continue;
 
         /* classe 0 = (R=0, M=0); 1 = (0,1); 2 = (1,0); 3 = (1,1) */
@@ -33,10 +33,10 @@ int find_victim_nru(void) {
 // Segunda Chance (Second Chance)
 static int hand = 0;
 int find_victim_2nd(void) {
-    int voltas = 0;  /* quantos quadros já examinamos */
+    int turns = 0;  /* quantos quadros já examinamos */
 
-    while (voltas < 2 * N_FRAMES) {   /* evita loop infinito improvável */
-        PTE *p = frames[hand].pte_ptr;
+    while (turns < 2 * N_FRAMES) {   /* evita loop infinito improvável */
+        TableEntry *p = frames[hand].TableEntry_ptr;
 
         /* 1. Encontrou quadro válido e R=0 → é a vítima */
         if (p && !p->referenced) {
@@ -50,7 +50,7 @@ int find_victim_2nd(void) {
 
         /* 3. Avança ponteiro para o próximo frame */
         hand = (hand + 1) % N_FRAMES;
-        voltas++;
+        turns++;
     }
     fprintf(stderr, "Erro 2ND: Nenhum quadro elegível para substituição!\n");
     exit(1);
@@ -60,7 +60,7 @@ int find_victim_2nd(void) {
 int find_victim_lru(int pid) {
     /* 1. Há quadro livre? Fica com ele. */
     for (int f = 0; f < N_FRAMES; ++f)
-        if (frames[f].pte_ptr == NULL)
+        if (frames[f].TableEntry_ptr == NULL)
             return f;
 
     /* 2. Procura o quadro MAIS antigo (menor age) do próprio processo */
@@ -71,7 +71,7 @@ int find_victim_lru(int pid) {
         if (frames[f].owner_pid != pid) /* só páginas do mesmo proc. */
             continue;
 
-        PTE *p = frames[f].pte_ptr;
+        TableEntry *p = frames[f].TableEntry_ptr;
         if (!p) continue;
 
         printf("LRU-scan: frame %2d  vpage %2d  age=%3u (menor até agora=%3u)\n", f, frames[f].vpage, p->age, min_age);
@@ -95,7 +95,7 @@ int find_victim_ws(int pid) {
     unsigned long long cur = tick; 
     for (int f = 0; f < N_FRAMES; ++f) {
         if (frames[f].owner_pid == pid) {
-            PTE *p = frames[f].pte_ptr;
+            TableEntry *p = frames[f].TableEntry_ptr;
             if (p && (cur - p->last_ref > ws_k))
                 return f;
         }
