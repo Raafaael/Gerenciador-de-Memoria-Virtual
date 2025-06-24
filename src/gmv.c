@@ -265,14 +265,21 @@ void dump_page_tables(void) {
     puts("\n========= Tabelas de Processos =========");
     for (int p = 0; p < N_PROCS; p++) {
         printf("Processo P%d\n", p + 1);
-        puts("VP  | P M R | Frame | Age | LastRef");
-        puts("------------------------------------------");
+        puts("VP  | P | M | R | Frame | Age | LastRef");
+        puts("--------------------------------------------");
+
         for (int v = 0; v < VPAGES; v++) {
             TableEntry *t = &page_table[p][v];
-            if (t->present == 0 && t->referenced == 0 && t->modified == 0) continue;
-            printf("%3d | %d %d %d | %5d | %3u | %7u\n",
-                   v, t->present, t->modified, t->referenced,
-                   t->present ? t->frame : -1, t->age, t->last_ref);
+
+            // Exibe todas as páginas, incluindo as que não estão presentes
+            printf("%3d | %1d | %1d | %1d | %5d | %3u | %7u\n",
+                   v, 
+                   t->present, 
+                   t->modified, 
+                   t->referenced,
+                   t->frame, 
+                   t->age, 
+                   t->last_ref);
         }
         putchar('\n');
     }
