@@ -35,6 +35,7 @@ static Algorithm ask_algorithm(void) {
         if (!strcmp(s,"WS")) return ALGORITHM_WS;
         printf("Opção inválida – tente novamente: ");
     }
+    return ALGORITHM_NRU;
 }
 
 int main(void) {

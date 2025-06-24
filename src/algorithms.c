@@ -90,14 +90,29 @@ int find_victim_lru(int pid) {
 int ws_k = 0;
 // Working Set
 int find_victim_ws(int pid) {
-    unsigned long long cur = tick; 
+    unsigned long long cur = tick;
+    int oldest_frame = -1;
+    unsigned long long oldest_time = ULONG_MAX;
+
     for (int f = 0; f < N_FRAMES; ++f) {
         if (frames[f].owner_pid == pid) {
             TableEntry *p = frames[f].TableEntry_ptr;
-            if (p && (cur - p->last_ref > ws_k))
-                return f;
+            if (p && (cur - p->last_ref > ws_k)) {
+                return f;  // Retorna a vítima caso encontre uma página fora da janela de trabalho
+            }
+
+            // Se nenhuma página for substituível, procuramos a mais antiga
+            if (p && p->last_ref < oldest_time) {
+                oldest_time = p->last_ref;
+                oldest_frame = f;
+            }
         }
     }
+
+    if (oldest_frame != -1) {
+        return oldest_frame;
+    }
+
     fprintf(stderr, "Erro WS: Nenhum quadro elegível para substituição!\n");
     exit(1);
 }

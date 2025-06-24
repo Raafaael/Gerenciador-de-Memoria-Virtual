@@ -29,6 +29,7 @@ int pid_to_index(int pid) {
     return -1;
 }
 
+
 void aging_tick(void) {
     if (current_algorithm != ALGORITHM_LRU) return;
     for (int f = 0; f < N_FRAMES; ++f) {
@@ -261,7 +262,7 @@ void dump_stats(void) {
 }
 
 void dump_page_tables(void) {
-    puts("\n========= Tabelas de Página =========");
+    puts("\n========= Tabelas de Processos =========");
     for (int p = 0; p < N_PROCS; p++) {
         printf("Processo P%d\n", p + 1);
         puts("VP  | P M R | Frame | Age | LastRef");
