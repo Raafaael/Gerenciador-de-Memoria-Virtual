@@ -4,8 +4,6 @@
 #include "gmv.h"
 #include "algorithms.h"
 
-int ws_k = 0; // global para o parâmetro do WS
-
 static int ask_rounds(void) {
     int r;
     printf("Número de rodadas (mín.1): ");
@@ -28,16 +26,15 @@ static int ask_ws_k(void) {
 
 static Algorithm ask_algorithm(void) {
     char s[8];
-    printf("Algoritmo [NRU|2ND|LRU|WS]: ");
+    printf("Escolha um algoritmo [NRU|2ND|LRU|WS]: ");
     while (scanf("%7s", s)==1) {
         for (int i=0;s[i];i++) s[i]=toupper((unsigned char)s[i]);
-        if (!strcmp(s,"NRU"))  return ALGORITHM_NRU;
-        if (!strcmp(s,"2ND"))  return ALGORITHM_2ND;
-        if (!strcmp(s,"LRU"))  return ALGORITHM_LRU;
-        if (!strcmp(s,"WS"))   return ALGORITHM_WS;
+        if (!strcmp(s,"NRU")) return ALGORITHM_NRU;
+        if (!strcmp(s,"2ND")) return ALGORITHM_2ND;
+        if (!strcmp(s,"LRU")) return ALGORITHM_LRU;
+        if (!strcmp(s,"WS")) return ALGORITHM_WS;
         printf("Opção inválida – tente novamente: ");
     }
-    return ALGORITHM_NRU;
 }
 
 int main(void) {
@@ -57,7 +54,7 @@ int main(void) {
         printf("Algoritmo de Substituição LRU\n");
     printf("Rodadas executadas: %d\n", rounds);
 
-    // INICIA SIMULAÇÃO
+    // Inicia simulação
     init_gmv(algorithm, rounds);
     run_gmv();
     dump_stats();

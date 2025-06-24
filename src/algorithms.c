@@ -5,14 +5,13 @@
 #include "gmv.h"
 
 // NRU: Not Recently Used
-/* ---------- algorithms.c ---------- */
 int find_victim_nru(void) {
     int best = -1, best_class = 4;
     for (int f = 0; f < N_FRAMES; ++f) {
         TableEntry *p = frames[f].TableEntry_ptr;
         if (!p) continue;
 
-        /* classe 0 = (R=0, M=0); 1 = (0,1); 2 = (1,0); 3 = (1,1) */
+        /* Classe 0 = (R=0, M=0); 1 = (0,1); 2 = (1,0); 3 = (1,1) */
         int cls = (p->referenced ? 2 : 0) + (p->modified ? 1 : 0);
 
         printf("NRU: frame %2d  class %d  M=%d R=%d\n", f, cls, p->modified, p->referenced);
@@ -20,7 +19,7 @@ int find_victim_nru(void) {
         if (cls < best_class) {
             best_class = cls;
             best = f;
-            if (best_class == 0) break;   /* não há melhor que a classe-0 */
+            if (best_class == 0) break;
         }
     }
     if (best == -1) {
@@ -33,15 +32,15 @@ int find_victim_nru(void) {
 // Segunda Chance (Second Chance)
 static int hand = 0;
 int find_victim_2nd(void) {
-    int turns = 0;  /* quantos quadros já examinamos */
+    int turns = 0;
 
-    while (turns < 2 * N_FRAMES) {   /* evita loop infinito improvável */
+    while (turns < 2 * N_FRAMES) {
         TableEntry *p = frames[hand].TableEntry_ptr;
 
-        /* 1. Encontrou quadro válido e R=0 → é a vítima */
+        /* 1. Encontrou quadro válido e R=0 -> é a vítima */
         if (p && !p->referenced) {
-            int victim = hand;   /* guarda o índice escolhido */
-            hand = (hand + 1) % N_FRAMES;  /* AVANÇA para o próximo quadro */
+            int victim = hand;   /* Guarda o índice escolhido */
+            hand = (hand + 1) % N_FRAMES;  /* Avança para o próximo quadro */
             return victim;
         }
 
@@ -58,23 +57,23 @@ int find_victim_2nd(void) {
 
 // LRU: Least Recently Used (usando Aging)
 int find_victim_lru(int pid) {
-    /* 1. Há quadro livre? Fica com ele. */
+    /* 1. Se tiver quadros livros, fica com ele */
     for (int f = 0; f < N_FRAMES; ++f)
         if (frames[f].TableEntry_ptr == NULL)
             return f;
 
-    /* 2. Procura o quadro MAIS antigo (menor age) do próprio processo */
+    /* 2. Procura o quadro mais antigo do próprio processo */
     int victim = -1;
     unsigned min_age = UINT_MAX;
 
     for (int f = 0; f < N_FRAMES; ++f) {
-        if (frames[f].owner_pid != pid) /* só páginas do mesmo proc. */
+        if (frames[f].owner_pid != pid)
             continue;
 
         TableEntry *p = frames[f].TableEntry_ptr;
         if (!p) continue;
 
-        printf("LRU-scan: frame %2d  vpage %2d  age=%3u (menor até agora=%3u)\n", f, frames[f].vpage, p->age, min_age);
+        printf("DEBUG LRU: frame %2d  vpage %2d  age=%3u (menor até agora=%3u)\n", f, frames[f].vpage, p->age, min_age);
 
         if (p && p->age < min_age) { /* quanto menor, mais velho */
             min_age = p->age;
@@ -84,12 +83,11 @@ int find_victim_lru(int pid) {
     if (victim != -1)
         return victim;
 
-    /* 3. NÃO deveria acontecer, mas... faz um fallback global para não travar */
     fprintf(stderr, "LRU local: pid %d ficou sem molduras.\n", pid);
     exit(1);
 }
 
-extern int ws_k; // Variável global para o parâmetro do WS
+int ws_k = 0;
 // Working Set
 int find_victim_ws(int pid) {
     unsigned long long cur = tick; 

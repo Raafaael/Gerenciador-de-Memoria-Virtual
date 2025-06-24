@@ -2,7 +2,7 @@
 #define ALGORITHMS_H
 
 extern unsigned long long tick;
-
+extern int ws_k;
 typedef enum {ALGORITHM_NRU, ALGORITHM_2ND, ALGORITHM_LRU, ALGORITHM_WS} Algorithm;
 
 int find_victim_nru(void);

@@ -53,7 +53,7 @@ void load_page(int frame, int pid, int vpage) {
 
     TableEntry *vict = frames[frame].TableEntry_ptr;
 
-    // 1. Limpe a vítima e contabilize ANTES de sobrescrever o frame
+    // 1. Limpe a vítima e contabilize antes de sobrescrever o frame
     if (vict && vict->present) {
         printf("DEBUG: Antes de remover, modified=%d, frame=%d, vpage=%d\n", vict->modified, frame, frames[frame].vpage);
         int px = pid_to_index(frames[frame].owner_pid) + 1;
@@ -112,7 +112,6 @@ void handle_access(const Access *a) {
         table_entry->modified = 1;
     }
 
-    // Print do acesso
     printf("Processo %d: acesso %s na página %d\n", idx+1, op_str(a->op), a->page_id);
 
     if (table_entry->present == 0) {
@@ -218,7 +217,7 @@ void run_gmv(void) {
             printf("--> Executando processo P%d\n", i + 1);
             kill(child_pid[i], SIGCONT);
 
-            /* ---------- quantum “normal” de 1 s ---------- */
+            /* ---------- Quantum de 0.2 s ---------- */
             if (read_access[i] < access_per_proc) {
                 fd_set set;
                 FD_ZERO(&set);
@@ -236,17 +235,17 @@ void run_gmv(void) {
                 sleep(1);
             }
 
-            /* ---------- atraso extra por page-fault ---------- */
+            /* ---------- Atraso extra por page-fault ---------- */
             if (pf_delay[i] > 0) {
                 printf("(delay de %d s para I/O de page-fault)\n", pf_delay[i]);
                 sleep(pf_delay[i]);
-                pf_delay[i] = 0;  /* já “pagou” o disco */
+                pf_delay[i] = 0;
             }
 
             kill(child_pid[i], SIGSTOP);
         }
 
-        /* zera o bit R entre rodadas se o algorithm for NRU */
+        /* Zera o bit R entre rodadas se o algorithm for NRU */
         if (current_algorithm == ALGORITHM_NRU) {
             for (int f = 0; f < N_FRAMES; ++f)
                 if (frames[f].TableEntry_ptr)
