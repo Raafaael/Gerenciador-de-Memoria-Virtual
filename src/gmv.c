@@ -22,13 +22,13 @@ unsigned long long tick = 0;
 int pfd[N_PROCS][2];
 int child_pid[N_PROCS];
 
+// Converte PID do processo filho para o índice do processo
 int pid_to_index(int pid) {
     for (int i = 0; i < N_PROCS; i++) {
         if (child_pid[i] == pid) return i;
     }
     return -1;
 }
-
 
 void aging_tick(void) {
     if (current_algorithm != ALGORITHM_LRU) return;
@@ -100,6 +100,7 @@ int find_victim(int pid) {
     }
 }
 
+// Processa um acesso de página
 void handle_access(const Access *a) {
     tick++; 
     int idx = pid_to_index(a->pid);
@@ -134,6 +135,7 @@ void handle_access(const Access *a) {
     aging_tick();
 }
 
+// Verifica se há acessos pendentes e processa-os
 void poll_pipes_once(void) {
     fd_set set;
     FD_ZERO(&set);
@@ -162,6 +164,7 @@ void init_gmv(Algorithm algorithm, int rounds) {
         frames[i].vpage = -1;
     }
 
+    // Inicializa a tabela de páginas
     char file_name[32];
     for (int i = 0; i < N_PROCS; i++) {
         if (pipe(pfd[i]) < 0) {
@@ -182,6 +185,7 @@ void init_gmv(Algorithm algorithm, int rounds) {
                 exit(1);
             }
 
+            // Lê o arquivo de acessos e envia os acessos para o pipe
             char line[32];
             while (fgets(line, sizeof line, f)) {
                 Access a;
@@ -223,7 +227,7 @@ void run_gmv(void) {
                 fd_set set;
                 FD_ZERO(&set);
                 FD_SET(pfd[i][0], &set);
-                struct timeval tv = {0, 200000};   /* 0,2 s timeout */
+                struct timeval tv = {0, 200000};
 
                 if (select(pfd[i][0] + 1, &set, NULL, NULL, &tv) > 0) {
                     Access a;
@@ -236,7 +240,7 @@ void run_gmv(void) {
                 sleep(1);
             }
 
-            /* ---------- Atraso extra por page-fault ---------- */
+            /* ---------- Atraso extra por page-fault - ponto extra ---------- */
             if (pf_delay[i] > 0) {
                 printf("(delay de %d s para I/O de page-fault)\n", pf_delay[i]);
                 sleep(pf_delay[i]);
